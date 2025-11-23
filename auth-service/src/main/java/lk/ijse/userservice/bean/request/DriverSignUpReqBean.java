@@ -1,0 +1,21 @@
+package lk.ijse.userservice.bean.request;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Title: mechani-link
+ * Description: DriverSignUpReqBean Class
+ * Created by Abhishek Ashinsa on 11/23/2025
+ * Email: abhi.ashinsa@gmail.com
+ * Company: Epic Lanka (Pvt) Ltd.
+ * Java Version: 17
+ */
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class DriverSignUpReqBean {
+
+
+}

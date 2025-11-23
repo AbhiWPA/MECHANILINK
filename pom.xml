@@ -11,7 +11,7 @@
 <!--    </parent>-->
 
     <modules>
-        <module>user-service</module>
+        <module>auth-service</module>
         <module>communication-service</module>
         <module>mechanic-service</module>
         <module>merchant-service</module>
