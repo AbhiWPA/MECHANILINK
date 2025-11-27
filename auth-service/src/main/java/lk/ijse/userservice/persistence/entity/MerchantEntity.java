@@ -1,0 +1,86 @@
+package lk.ijse.userservice.persistence.entity;
+
+import jakarta.persistence.*;
+import lk.ijse.userservice.util.StatusConstant;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Title: mechani-link
+ * Description: MerchantEntity Class
+ * Created by Abhishek Ashinsa on 11/25/2025
+ * Email: abhi.ashinsa@gmail.com
+ * Company: Epic Lanka (Pvt) Ltd.
+ * Java Version: 17
+ */
+
+@Entity
+@Table(name = "merchants")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MerchantEntity {
+
+    @Id
+    @Column(name = "id")
+    private String id;
+
+
+    @OneToOne
+    @JoinColumn(name = "id")
+    private UserEntity user;
+
+    @Column(name = "business_name", nullable = false)
+    private String businessName;
+
+    @Column(name = "business_registration_number", unique = true)
+    private String businessRegistrationNumber;
+
+    private String businessType;
+    private String businessAddress;
+    private String businessPhone;
+    private String businessEmail;
+    private String businessWebsite;
+    private String businessDescription;
+    private String businessHours;
+
+    // Business Details
+//    private Integer establishedYear;
+//    private Integer numberOfEmployees;
+//    private Double annualRevenue;
+//    private String businessSize;
+    private Boolean deliveryAvailable;
+//    private Boolean warrantyProvided;
+//    private String returnPolicy;
+    private String paymentMethodsAccepted;
+
+    // Product Information
+    @ElementCollection
+    @CollectionTable(name = "merchant_categories", joinColumns = @JoinColumn(name = "merchant_id"))
+    @Column(name = "category")
+    private List<String> productCategories = new ArrayList<>();
+
+    private String mainProductsServices;
+    private String brandsAvailable;
+//    private String inventorySize;
+
+    // Legal & Financial
+//    private String taxIdentificationNumber;
+//    private String tradeLicenseNumber;
+//    private LocalDateTime licenseExpiryDate;
+//    private String bankName;
+//    private String accountNumber;
+//    private String accountHolderName;
+//    private String bankBranch;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "merchant_status")
+    private StatusConstant status;
+}

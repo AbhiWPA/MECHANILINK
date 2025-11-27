@@ -31,4 +31,7 @@ public record ResponseBean (String status, String message, Object content) imple
     public static ResponseBean unauthorized(String message) {
         return new ResponseBean(UNAUTHORIZED, message, null);
     }
+
+    public static ResponseBean exists(Object content) {return new ResponseBean(USER_ALREADY_EXISTS, "User Already Exists!", content);
+    }
 }

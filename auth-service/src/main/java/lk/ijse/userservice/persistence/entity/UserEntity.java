@@ -3,6 +3,7 @@ package lk.ijse.userservice.persistence.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lk.ijse.userservice.util.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,8 +35,8 @@ import java.util.List;
 public class UserEntity implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @NotNull
+    private String id;
 
     @NotBlank(message = "Username is required")
     @Column(unique = true, nullable = false)
@@ -56,11 +57,19 @@ public class UserEntity implements UserDetails {
     private String lastName;
     private String phoneNumber;
 
-    @Column(nullable = false)
-    private boolean active = false;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private MechanicEntity mechanic;
 
-    private String verificationToken;
-    private LocalDateTime tokenExpiryDate;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private MerchantEntity merchant;
+
+    @Column(nullable = false)
+    private boolean active;
+
+//    private String verificationToken;
+//    private LocalDateTime tokenExpiryDate;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
