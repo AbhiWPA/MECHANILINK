@@ -1,6 +1,7 @@
 package lk.ijse.userservice.service;
 
 import lk.ijse.userservice.bean.ResponseBean;
+import lk.ijse.userservice.bean.request.LoginReqBean;
 import lk.ijse.userservice.bean.request.SignUpReqBean;
 import org.springframework.http.ResponseEntity;
 
@@ -16,4 +17,6 @@ import org.springframework.http.ResponseEntity;
 public interface AuthService {
 
     ResponseEntity<ResponseBean> signUp(SignUpReqBean signUpReqBean);
+
+    ResponseEntity<ResponseBean> login(LoginReqBean bean);
 }

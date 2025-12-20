@@ -1,22 +1,30 @@
 package lk.ijse.userservice.service.impl;
 
+import jakarta.validation.constraints.NotNull;
 import lk.ijse.userservice.bean.ResponseBean;
+import lk.ijse.userservice.bean.request.LoginReqBean;
 import lk.ijse.userservice.bean.request.SignUpReqBean;
+import lk.ijse.userservice.bean.response.LoginResBean;
 import lk.ijse.userservice.constant.AppConstant;
+import lk.ijse.userservice.exception.NoDataFoundException;
+import lk.ijse.userservice.persistence.MechanicRepo;
+import lk.ijse.userservice.persistence.MerchantRepo;
 import lk.ijse.userservice.persistence.UserRepo;
 import lk.ijse.userservice.persistence.entity.MechanicEntity;
 import lk.ijse.userservice.persistence.entity.MerchantEntity;
 import lk.ijse.userservice.persistence.entity.UserEntity;
 import lk.ijse.userservice.service.AuthService;
 import lk.ijse.userservice.service.JwtService;
-import lk.ijse.userservice.util.Role;
-import lk.ijse.userservice.util.StatusConstant;
-import lk.ijse.userservice.util.UserIDGenerator;
+import lk.ijse.userservice.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Optional;
 
@@ -37,6 +45,10 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+    private final MechanicRepo mechanicRepo;
+    private final MerchantRepo merchantRepo;
+    private final ObjectMapper objectMapper;
 
     private static final String uuID = "000000";
 
@@ -58,6 +70,7 @@ public class AuthServiceImpl implements AuthService {
         }
         return ResponseEntity.ok(new ResponseBean(AppConstant.NOT_FOUND, "Signup data not found,Please try again", null));
     }
+
 
     private ResponseEntity<ResponseBean> mechanicSignUp(SignUpReqBean signUpReqBean) {
         log.debug("Mechanic registration");
@@ -100,8 +113,9 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
             log.debug("User ::::::::::::: " + user.toString());
-            userRepo.save(user);
             String token = jwtService.generateToken(user);
+            user.setJwtToken(token);
+            userRepo.save(user);
             log.debug("Token ::::::::::::: " + token);
             return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
 
@@ -157,8 +171,9 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
             log.debug("User ::::::::::::: " + user.toString());
-            userRepo.save(user);
             String token = jwtService.generateToken(user);
+            user.setJwtToken(token);
+            userRepo.save(user);
             log.debug("Token ::::::::::::: " + token);
             return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
 
@@ -190,9 +205,65 @@ public class AuthServiceImpl implements AuthService {
                 .active(true)
                 .build();
         log.debug("User ::::::::::::: " + user.toString());
-        userRepo.save(user);
         String token = jwtService.generateToken(user);
+        user.setJwtToken(token);
+        userRepo.save(user);
         log.debug("Token ::::::::::::: " + token);
         return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
+    }
+
+    @Override
+    public ResponseEntity<ResponseBean> login(LoginReqBean bean) {
+        log.debug("Starting to find the User");
+        UserEntity user = userRepo.findByEmail(bean.getEmail()).orElseThrow(() ->
+                new NoDataFoundException(ResponseMessageConstant.USER_NOT_FOUND)
+        );
+
+        log.debug("Starting to Authenticate the User: " + user);
+        return isAuthenticated(bean, user);
+
+    }
+
+    private ResponseEntity<ResponseBean> isAuthenticated(@NotNull LoginReqBean loginBean, @NotNull UserEntity loginEntity) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginEntity.getEmail(),
+                        loginBean.getPassword()
+                )
+        );
+
+        if (authentication.isAuthenticated()) {
+            log.info("User Login Success");
+            String accessToken = jwtService.generateToken(loginEntity);
+
+            return saveUserAccessToken(loginEntity, accessToken)
+                    ? ResponseEntity.ok(ResponseBean.success(new LoginResBean(
+                            loginEntity.getUsername(),
+                            loginEntity,
+//                            getUserDetails(loginEntity.getId(), loginEntity.getRole().name()),
+                            accessToken
+                    )
+            )) : ResponseEntity.ok(ResponseBean.unauthorized("Failed to save the Access Token"));
+        } else {
+            return ResponseEntity.ok(ResponseBean.unauthorized("Invalid Credentials"));
+        }
+    }
+
+//    private Object getUserDetails(@NotNull String id, String role) {
+////        log.debug("Getting user details : {}", id, role );
+//
+//        if(role.equals(Role.MECHANIC.name())) {
+//            return mechanicRepo.findById(id).get().toString();
+//        } else if (role.equals(Role.MERCHANT.name())) {
+//            return merchantRepo.findById(id).get();
+//        }
+//        return null;
+//    }
+
+    private boolean saveUserAccessToken(@NotNull UserEntity loginEntity, String accessToken) {
+        loginEntity.setJwtToken(accessToken);
+        userRepo.save(loginEntity);
+        return true;
+
     }
 }

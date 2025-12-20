@@ -1,11 +1,10 @@
 package lk.ijse.userservice.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lk.ijse.userservice.util.StatusConstant;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +23,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = "user")
 public class MechanicEntity {
     @Id
     @Column(name = "id")
@@ -32,6 +32,7 @@ public class MechanicEntity {
 
     @OneToOne
     @JoinColumn(name = "id")
+    @JsonIgnoreProperties({"mechanic", "merchant"})
     private UserEntity user;
 
     // Professional Information

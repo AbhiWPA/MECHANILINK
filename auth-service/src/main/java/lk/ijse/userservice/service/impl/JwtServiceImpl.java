@@ -78,6 +78,7 @@ public class JwtServiceImpl implements JwtService {
         return userEmail.equals(userDetails.getUsername()) && !isTokenExpired(authToken);
     }
 
+
     private boolean isTokenExpired(String authToken) {
         return extractExpiration(authToken).before(new Date());
     }

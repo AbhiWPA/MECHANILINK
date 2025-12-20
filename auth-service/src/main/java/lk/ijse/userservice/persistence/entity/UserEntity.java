@@ -1,14 +1,13 @@
 package lk.ijse.userservice.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lk.ijse.userservice.util.Role;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -32,6 +31,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"mechanic", "merchant"})
 public class UserEntity implements UserDetails {
 
     @Id
@@ -59,16 +59,19 @@ public class UserEntity implements UserDetails {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
+    @JsonIgnore
     private MechanicEntity mechanic;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
+    @JsonIgnore
     private MerchantEntity merchant;
 
     @Column(nullable = false)
     private boolean active;
 
-//    private String verificationToken;
+    @Column
+    private String jwtToken;
 //    private LocalDateTime tokenExpiryDate;
 
     @Column(nullable = false)

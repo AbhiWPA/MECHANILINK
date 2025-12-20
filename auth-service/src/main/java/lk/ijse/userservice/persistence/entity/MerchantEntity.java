@@ -1,11 +1,10 @@
 package lk.ijse.userservice.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lk.ijse.userservice.util.StatusConstant;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,6 +25,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = "user")
 public class MerchantEntity {
 
     @Id
@@ -35,6 +35,7 @@ public class MerchantEntity {
 
     @OneToOne
     @JoinColumn(name = "id")
+    @JsonIgnoreProperties({"mechanic", "merchant"})
     private UserEntity user;
 
     @Column(name = "business_name", nullable = false)
