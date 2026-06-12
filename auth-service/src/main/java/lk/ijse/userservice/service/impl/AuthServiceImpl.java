@@ -1,12 +1,13 @@
 package lk.ijse.userservice.service.impl;
 
-import jakarta.validation.constraints.NotNull;
-import lk.ijse.userservice.bean.ResponseBean;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import lk.ijse.userservice.bean.request.LoginReqBean;
+import lk.ijse.userservice.bean.request.MechanicSignUpReqBean;
+import lk.ijse.userservice.bean.request.MerchantSignUpReqBean;
 import lk.ijse.userservice.bean.request.SignUpReqBean;
 import lk.ijse.userservice.bean.response.LoginResBean;
-import lk.ijse.userservice.constant.AppConstant;
-import lk.ijse.userservice.exception.NoDataFoundException;
+import lk.ijse.userservice.bean.response.UserResponseBean;
 import lk.ijse.userservice.persistence.MechanicRepo;
 import lk.ijse.userservice.persistence.MerchantRepo;
 import lk.ijse.userservice.persistence.UserRepo;
@@ -21,12 +22,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.UUID;
 
 /**
  * Title: mechani-link
@@ -42,228 +43,191 @@ import java.util.Optional;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepo userRepo;
+    private final UserRepo userRepository;
+    private final MechanicRepo mechanicRepository;
+    private final MerchantRepo merchantRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final MechanicRepo mechanicRepo;
-    private final MerchantRepo merchantRepo;
-    private final ObjectMapper objectMapper;
-
-    private static final String uuID = "000000";
 
     @Override
-    public ResponseEntity<ResponseBean> signUp(SignUpReqBean signUpReqBean) {
+    @Transactional
+    public ResponseEntity signUp(SignUpReqBean request) {
+        log.info("Registering new user with email: {}", request.getEmail());
 
-        if (signUpReqBean != null) {
-            if (signUpReqBean.getRole().equals(Role.DRIVER)) {
-                log.debug("Sign up as a driver");
-                return driverSignUp(signUpReqBean);
-            } else if (signUpReqBean.getRole().equals(Role.MECHANIC)) {
-                log.debug("Sign up as a mechanic");
-                return mechanicSignUp(signUpReqBean);
-            } else if (signUpReqBean.getRole().equals(Role.MERCHANT)) {
-                log.debug("Sign up as a merchant");
-                return merchantSignUp(signUpReqBean);
-            }
-            return ResponseEntity.ok(new ResponseBean(AppConstant.UNAUTHORIZED, "Unauthorized access. Please Select the Role!", null));
+        // Validate email uniqueness
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already registered: " + request.getEmail());
         }
-        return ResponseEntity.ok(new ResponseBean(AppConstant.NOT_FOUND, "Signup data not found,Please try again", null));
+
+        // Validate username uniqueness
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already taken: " + request.getUsername());
+        }
+
+        // Validate role-specific data
+        validateRoleSpecificData(request);
+
+        // Generate user ID
+        String userId = generateUserId(request.getRole());
+
+        // Create base user
+        UserEntity user = createBaseUser(request, userId);
+        UserEntity savedUser = userRepository.save(user);
+
+        // Create role-specific entity
+        Object roleSpecificData = createRoleSpecificEntity(savedUser, request);
+
+        log.info("User registered successfully with ID: {}", savedUser.getId());
+
+        return ResponseEntity.ok(
+                UserResponseBean.builder()
+                        .id(savedUser.getId())
+                        .username(savedUser.getUsername())
+                        .email(savedUser.getEmail())
+                        .role(savedUser.getRole())
+                        .firstName(savedUser.getFirstName())
+                        .lastName(savedUser.getLastName())
+                        .phoneNumber(savedUser.getPhoneNumber())
+                        .active(savedUser.getActive())
+                        .roleSpecificData(roleSpecificData)
+                        .build()
+        );
     }
 
+    @Override
+    public ResponseEntity login(LoginReqBean request) {
+        log.info("Processing login for user: {}", request.getEmail());
 
-    private ResponseEntity<ResponseBean> mechanicSignUp(SignUpReqBean signUpReqBean) {
-        log.debug("Mechanic registration");
-        if(signUpReqBean.getMechanic() != null){
-            log.debug("Mechanic registration :" + signUpReqBean.getMechanic());
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
 
-            String userID = UserIDGenerator.generateUserId(signUpReqBean.getRole());
+        UserEntity user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-            boolean isExist = userRepo.existsByEmailOrId(signUpReqBean.getEmail(), userID);
-
-            if(isExist){
-                log.debug("Mechanic registration : User Already Exists" + signUpReqBean.getEmail());
-                return ResponseEntity.ok(ResponseBean.exists(signUpReqBean.getEmail()));
-            }
-
-            UserEntity user = UserEntity.builder()
-                    .id(userID)
-                    .username(signUpReqBean.getUsername())
-                    .email(signUpReqBean.getEmail())
-                    .password(passwordEncoder.encode(signUpReqBean.getPassword()))
-                    .role(Role.valueOf(signUpReqBean.getRole().name()))
-                    .firstName(signUpReqBean.getFirstName())
-                    .lastName(signUpReqBean.getLastName())
-                    .phoneNumber(signUpReqBean.getPhoneNumber())
-                    .active(true)
-                    .mechanic(MechanicEntity.builder()
-                            .id(userID)
-                            .specialization(signUpReqBean.getMechanic().getSpecialization())
-                            .yearsOfExperience(signUpReqBean.getMechanic().getYearsOfExperience())
-                            .hourlyRate(signUpReqBean.getMechanic().getHourlyRate())
-                            .isCertified(signUpReqBean.getMechanic().getIsCertified())
-                            .availableTimeSlots(signUpReqBean.getMechanic().getAvailableTimeSlots())
-                            .serviceRadiusKm(signUpReqBean.getMechanic().getServiceRadiusKm())
-                            .toolsAvailable(signUpReqBean.getMechanic().getToolsAvailable())
-                            .vehicleTypesSpecialized(signUpReqBean.getMechanic().getVehicleTypesSpecialized())
-                            .skills(signUpReqBean.getMechanic().getSkills())
-                            .certifications(signUpReqBean.getMechanic().getCertifications())
-                            .status(StatusConstant.ACTIVE)
-                            .build())
-                    .build();
-
-            log.debug("User ::::::::::::: " + user.toString());
-            String token = jwtService.generateToken(user);
-            user.setJwtToken(token);
-            userRepo.save(user);
-            log.debug("Token ::::::::::::: " + token);
-            return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
-
-
-        }
-        return ResponseEntity.ok(new ResponseBean(AppConstant.UNAUTHORIZED, null, "Sign up details wrong please try again!"));
-    }
-
-
-    private ResponseEntity<ResponseBean> merchantSignUp(SignUpReqBean signUpReqBean) {
-        log.debug("Merchant registration");
-
-        if(signUpReqBean.getMerchant() != null){
-            log.debug("Merchant registration :" + signUpReqBean.getMechanic());
-
-            String userID = UserIDGenerator.generateUserId(signUpReqBean.getRole());
-
-            boolean isExist = userRepo.existsByEmailOrId(signUpReqBean.getEmail(), userID);
-
-            if(isExist){
-                log.debug("Merchant registration : User Already Exists" + signUpReqBean.getEmail());
-                return ResponseEntity.ok(ResponseBean.exists(signUpReqBean.getEmail()));
-            }
-
-            UserEntity user = UserEntity.builder()
-                    .id(userID)
-                    .username(signUpReqBean.getUsername())
-                    .email(signUpReqBean.getEmail())
-                    .password(passwordEncoder.encode(signUpReqBean.getPassword()))
-                    .role(Role.valueOf(signUpReqBean.getRole().name()))
-                    .firstName(signUpReqBean.getFirstName())
-                    .lastName(signUpReqBean.getLastName())
-                    .phoneNumber(signUpReqBean.getPhoneNumber())
-                    .active(true)
-                    .merchant(MerchantEntity.builder()
-                            .id(userID)
-                            .businessName(signUpReqBean.getMerchant().getBusinessName())
-                            .businessRegistrationNumber(signUpReqBean.getMerchant().getBusinessRegistrationNumber())
-                            .businessType(signUpReqBean.getMerchant().getBusinessType())
-                            .businessAddress(signUpReqBean.getMerchant().getBusinessAddress())
-                            .businessPhone(signUpReqBean.getMerchant().getBusinessPhone())
-                            .businessEmail(signUpReqBean.getMerchant().getBusinessEmail())
-                            .businessWebsite(signUpReqBean.getMerchant().getBusinessWebsite())
-                            .businessDescription(signUpReqBean.getMerchant().getBusinessDescription())
-                            .businessHours(signUpReqBean.getMerchant().getBusinessHours())
-                            .deliveryAvailable(signUpReqBean.getMerchant().getDeliveryAvailable())
-                            .paymentMethodsAccepted(signUpReqBean.getMerchant().getPaymentMethodsAccepted())
-                            .productCategories(signUpReqBean.getMerchant().getProductCategories())
-                            .mainProductsServices(signUpReqBean.getMerchant().getMainProductsServices())
-                            .brandsAvailable(signUpReqBean.getMerchant().getBrandsAvailable())
-                            .status(StatusConstant.ACTIVE)
-                            .build())
-                    .build();
-
-            log.debug("User ::::::::::::: " + user.toString());
-            String token = jwtService.generateToken(user);
-            user.setJwtToken(token);
-            userRepo.save(user);
-            log.debug("Token ::::::::::::: " + token);
-            return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
-
-        }
-        return ResponseEntity.ok(new ResponseBean(AppConstant.UNAUTHORIZED, null, "Sign up details wrong please try again!"));
-    }
-
-    private ResponseEntity<ResponseBean> driverSignUp(SignUpReqBean signUpReqBean) {
-        log.debug("Driver registration");
-
-        String userID = UserIDGenerator.generateUserId(signUpReqBean.getRole());
-
-        boolean isExist = userRepo.existsByEmailOrId(signUpReqBean.getEmail(), userID);
-
-        if(isExist){
-            log.debug("Merchant registration : User Already Exists" + signUpReqBean.getEmail());
-            return ResponseEntity.ok(ResponseBean.exists(signUpReqBean.getEmail()));
-        }
-
-        UserEntity user = UserEntity.builder()
-                .id(userID)
-                .username(signUpReqBean.getUsername())
-                .email(signUpReqBean.getEmail())
-                .password(passwordEncoder.encode(signUpReqBean.getPassword()))
-                .role(Role.valueOf(signUpReqBean.getRole().name()))
-                .firstName(signUpReqBean.getFirstName())
-                .lastName(signUpReqBean.getLastName())
-                .phoneNumber(signUpReqBean.getPhoneNumber())
-                .active(true)
-                .build();
-        log.debug("User ::::::::::::: " + user.toString());
         String token = jwtService.generateToken(user);
-        user.setJwtToken(token);
-        userRepo.save(user);
-        log.debug("Token ::::::::::::: " + token);
-        return ResponseEntity.ok(new ResponseBean(AppConstant.SUCCESS, signUpReqBean.getUsername(), token));
+
+        // Get role-specific data for response
+        Object roleSpecificData = getRoleSpecificData(user);
+
+        return ResponseEntity.ok(
+                LoginResBean.builder()
+                        .accessToken(token)
+                        .tokenType("Bearer")
+                        .userId(user.getId())
+                        .email(user.getEmail())
+                        .username(user.getUsername())
+                        .role(user.getRole())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .phoneNumber(user.getPhoneNumber())
+                        .roleSpecificData(roleSpecificData)
+                        .build()
+        );
     }
 
-    @Override
-    public ResponseEntity<ResponseBean> login(LoginReqBean bean) {
-        log.debug("Starting to find the User");
-        UserEntity user = userRepo.findByEmail(bean.getEmail()).orElseThrow(() ->
-                new NoDataFoundException(ResponseMessageConstant.USER_NOT_FOUND)
-        );
-
-        log.debug("Starting to Authenticate the User: " + user);
-        return isAuthenticated(bean, user);
-
-    }
-
-    private ResponseEntity<ResponseBean> isAuthenticated(@NotNull LoginReqBean loginBean, @NotNull UserEntity loginEntity) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginEntity.getEmail(),
-                        loginBean.getPassword()
-                )
-        );
-
-        if (authentication.isAuthenticated()) {
-            log.info("User Login Success");
-            String accessToken = jwtService.generateToken(loginEntity);
-
-            return saveUserAccessToken(loginEntity, accessToken)
-                    ? ResponseEntity.ok(ResponseBean.success(new LoginResBean(
-                            loginEntity.getUsername(),
-                            loginEntity,
-//                            getUserDetails(loginEntity.getId(), loginEntity.getRole().name()),
-                            accessToken
-                    )
-            )) : ResponseEntity.ok(ResponseBean.unauthorized("Failed to save the Access Token"));
-        } else {
-            return ResponseEntity.ok(ResponseBean.unauthorized("Invalid Credentials"));
+    private void validateRoleSpecificData(SignUpReqBean request) {
+        if (request.getRole() == Role.MECHANIC && request.getMechanic() == null) {
+            throw new RuntimeException("Mechanic details are required for MECHANIC role");
+        }
+        if (request.getRole() == Role.MERCHANT && request.getMerchant() == null) {
+            throw new RuntimeException("Merchant details are required for MERCHANT role");
         }
     }
 
-//    private Object getUserDetails(@NotNull String id, String role) {
-////        log.debug("Getting user details : {}", id, role );
-//
-//        if(role.equals(Role.MECHANIC.name())) {
-//            return mechanicRepo.findById(id).get().toString();
-//        } else if (role.equals(Role.MERCHANT.name())) {
-//            return merchantRepo.findById(id).get();
-//        }
-//        return null;
-//    }
+    private UserEntity createBaseUser(SignUpReqBean request, String userId) {
+        return UserEntity.builder()
+                .id(userId)
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .nic(request.getNic())
+                .address(request.getAddress())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
+                .active(true)
+                .isVerified(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
 
-    private boolean saveUserAccessToken(@NotNull UserEntity loginEntity, String accessToken) {
-        loginEntity.setJwtToken(accessToken);
-        userRepo.save(loginEntity);
-        return true;
+    private Object createRoleSpecificEntity(UserEntity user, SignUpReqBean request) {
+        if (request.getRole() == Role.MECHANIC && request.getMechanic() != null) {
+            return createMechanic(user, request.getMechanic());
+        } else if (request.getRole() == Role.MERCHANT && request.getMerchant() != null) {
+            return createMerchant(user, request.getMerchant());
+        }
+        return null;
+    }
 
+    private MechanicEntity createMechanic(UserEntity user, @Valid MechanicSignUpReqBean mechanicReq) {
+        MechanicEntity mechanic = MechanicEntity.builder()
+                .id(user.getId())
+                .user(user)
+                .specialization(mechanicReq.getSpecialization())
+                .yearsOfExperience(mechanicReq.getYearsOfExperience())
+                .hourlyRate(mechanicReq.getHourlyRate())
+                .isCertified(mechanicReq.getIsCertified())
+                .availableTimeSlots(mechanicReq.getAvailableTimeSlots())
+                .serviceRadiusKm(mechanicReq.getServiceRadiusKm())
+                .toolsAvailable(mechanicReq.getToolsAvailable())
+                .vehicleTypesSpecialized(mechanicReq.getVehicleTypesSpecialized())
+                .skills(mechanicReq.getSkills() != null ? mechanicReq.getSkills() : new ArrayList<>())
+                .certifications(mechanicReq.getCertifications() != null ? mechanicReq.getCertifications() : new ArrayList<>())
+                .status(StatusConstant.ACTIVE)
+                .build();
+
+        user.setMechanic(mechanic);
+        return mechanicRepository.save(mechanic);
+    }
+
+    private MerchantEntity createMerchant(UserEntity user, @Valid MerchantSignUpReqBean merchantReq) {
+        MerchantEntity merchant = MerchantEntity.builder()
+                .id(user.getId())
+                .user(user)
+                .businessName(merchantReq.getBusinessName())
+                .businessRegistrationNumber(merchantReq.getBusinessRegistrationNumber())
+                .businessType(merchantReq.getBusinessType())
+                .businessAddress(merchantReq.getBusinessAddress())
+                .businessPhone(merchantReq.getBusinessPhone())
+                .businessEmail(merchantReq.getBusinessEmail())
+                .businessWebsite(merchantReq.getBusinessWebsite())
+                .businessDescription(merchantReq.getBusinessDescription())
+                .businessHours(merchantReq.getBusinessHours())
+                .deliveryAvailable(merchantReq.getDeliveryAvailable())
+                .paymentMethodsAccepted(merchantReq.getPaymentMethodsAccepted())
+                .productCategories(merchantReq.getProductCategories() != null ? merchantReq.getProductCategories() : new ArrayList<>())
+                .mainProductsServices(merchantReq.getMainProductsServices())
+                .brandsAvailable(merchantReq.getBrandsAvailable())
+                .status(StatusConstant.ACTIVE)
+                .build();
+
+        user.setMerchant(merchant);
+        return merchantRepository.save(merchant);
+    }
+
+    private Object getRoleSpecificData(UserEntity user) {
+        if (user.getRole() == Role.MECHANIC && user.getMechanic() != null) {
+            return user.getMechanic();
+        } else if (user.getRole() == Role.MERCHANT && user.getMerchant() != null) {
+            return user.getMerchant();
+        }
+        return null;
+    }
+
+    private String generateUserId(Role role) {
+        String prefix = switch (role) {
+            case ADMIN -> "ADMIN";
+            case MECHANIC -> "MECH";
+            case DRIVER -> "DRIV";
+            case MERCHANT -> "MERCH";
+        };
+        String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return prefix + "_" + uuid;
     }
 }

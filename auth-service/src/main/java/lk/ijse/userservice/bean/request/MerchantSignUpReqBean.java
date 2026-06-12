@@ -21,9 +21,7 @@ import java.util.List;
 @NoArgsConstructor
 public class MerchantSignUpReqBean {
 
-    @NotBlank(message = "Business name is required")
     private String businessName;
-
     private String businessRegistrationNumber;
     private String businessType;
     private String businessAddress;
@@ -32,29 +30,9 @@ public class MerchantSignUpReqBean {
     private String businessWebsite;
     private String businessDescription;
     private String businessHours;
-
-    // Business Details
-//    private Integer establishedYear;
-//    private Integer numberOfEmployees;
-//    private Double annualRevenue;
-//    private String businessSize;
     private Boolean deliveryAvailable;
-//    private Boolean warrantyProvided;
-//    private String returnPolicy;
     private String paymentMethodsAccepted;
-
-    // Product Information
     private List<String> productCategories;
     private String mainProductsServices;
     private String brandsAvailable;
-//    private String inventorySize;
-
-    // Legal & Financial
-//    private String taxIdentificationNumber;
-//    private String tradeLicenseNumber;
-//    private LocalDateTime licenseExpiryDate;
-//    private String bankName;
-//    private String accountNumber;
-//    private String accountHolderName;
-//    private String bankBranch;
 }

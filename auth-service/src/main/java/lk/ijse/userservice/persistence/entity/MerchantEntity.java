@@ -29,9 +29,8 @@ import java.util.List;
 public class MerchantEntity {
 
     @Id
-    @Column(name = "id")
+    @Column(name = "id", length = 50)
     private String id;
-
 
     @OneToOne
     @JoinColumn(name = "id")
@@ -51,18 +50,9 @@ public class MerchantEntity {
     private String businessWebsite;
     private String businessDescription;
     private String businessHours;
-
-    // Business Details
-//    private Integer establishedYear;
-//    private Integer numberOfEmployees;
-//    private Double annualRevenue;
-//    private String businessSize;
     private Boolean deliveryAvailable;
-//    private Boolean warrantyProvided;
-//    private String returnPolicy;
     private String paymentMethodsAccepted;
 
-    // Product Information
     @ElementCollection
     @CollectionTable(name = "merchant_categories", joinColumns = @JoinColumn(name = "merchant_id"))
     @Column(name = "category")
@@ -70,16 +60,6 @@ public class MerchantEntity {
 
     private String mainProductsServices;
     private String brandsAvailable;
-//    private String inventorySize;
-
-    // Legal & Financial
-//    private String taxIdentificationNumber;
-//    private String tradeLicenseNumber;
-//    private LocalDateTime licenseExpiryDate;
-//    private String bankName;
-//    private String accountNumber;
-//    private String accountHolderName;
-//    private String bankBranch;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "merchant_status")

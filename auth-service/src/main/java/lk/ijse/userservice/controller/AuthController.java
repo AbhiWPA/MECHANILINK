@@ -1,5 +1,7 @@
 package lk.ijse.userservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lk.ijse.userservice.bean.ResponseBean;
 import lk.ijse.userservice.bean.request.LoginReqBean;
 import lk.ijse.userservice.bean.request.SignUpReqBean;
@@ -26,11 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Authentication endpoints")
 public class AuthController {
 
     private final AuthService authService;
 
     @PostMapping("/signUp")
+    @Operation(summary = "Register a new user", description = "Creates a new user account with role-specific details")
     public ResponseEntity<ResponseBean> userSignUp(@RequestBody SignUpReqBean bean) {
         log.debug("User Sign up request received!");
         if (bean != null) {
@@ -41,6 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Authenticate user", description = "Login with email and password to receive JWT token")
     public ResponseEntity<ResponseBean> userLogin(@RequestBody LoginReqBean bean) {
         log.debug("User login request received!");
         if (bean != null) {

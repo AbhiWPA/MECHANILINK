@@ -29,6 +29,8 @@ public class MechanicSignUpReqBean {
     private Double serviceRadiusKm;
     private String toolsAvailable;
     private String vehicleTypesSpecialized;
+    private List<String> skills;
+    private List<String> certifications;
 
 //    // Workshop Information
 //    private String workshopName;
@@ -46,6 +48,6 @@ public class MechanicSignUpReqBean {
 //    private String bankBranch;
 
     // Skills
-    private List<String> skills;
-    private List<String> certifications;
+//    private List<String> skills;
+//    private List<String> certifications;
 }

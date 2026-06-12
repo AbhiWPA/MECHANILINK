@@ -1,11 +1,6 @@
 package lk.ijse.userservice.persistence.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lk.ijse.userservice.util.Role;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,16 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
-
-/**
- * Title: mechani-link
- * Description: UserEntity Class
- * Created by Abhishek Ashinsa on 11/23/2025
- * Email: abhi.ashinsa@gmail.com
- * Company: Epic Lanka (Pvt) Ltd.
- * Java Version: 17
- */
+import java.util.Collections;
 
 @Entity
 @Table(name = "users")
@@ -31,22 +17,19 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"mechanic", "merchant"})
 public class UserEntity implements UserDetails {
 
     @Id
-    @NotNull
+    @Column(length = 50, nullable = false, unique = true)
     private String id;
 
-    @NotBlank(message = "Username is required")
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Email(message = "Valid email is required")
     @Column(unique = true, nullable = false)
     private String email;
 
-    @NotBlank(message = "Password is required")
+    @Column(nullable = false)
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -56,28 +39,30 @@ public class UserEntity implements UserDetails {
     private String firstName;
     private String lastName;
     private String phoneNumber;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @PrimaryKeyJoinColumn
-    @JsonIgnore
-    private MechanicEntity mechanic;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @PrimaryKeyJoinColumn
-    @JsonIgnore
-    private MerchantEntity merchant;
+    private String nic;
+    private String address;
+    private LocalDateTime dateOfBirth;
+    private String profileImage;
+    private Double latitude;
+    private Double longitude;
 
     @Column(nullable = false)
-    private boolean active;
+    private Boolean active = true;
 
-    @Column
-    private String jwtToken;
-//    private LocalDateTime tokenExpiryDate;
+    @Column(name = "is_verified")
+    private Boolean isVerified = false;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private MechanicEntity mechanic;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private MerchantEntity merchant;
 
     @PrePersist
     protected void onCreate() {
@@ -90,19 +75,20 @@ public class UserEntity implements UserDetails {
         updatedAt = LocalDateTime.now();
     }
 
+    // UserDetails Implementation Methods
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
     public String getPassword() {
         return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;  // Using email as username for authentication
     }
 
     @Override
@@ -122,6 +108,6 @@ public class UserEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return active != null && active;
     }
 }

@@ -35,7 +35,22 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 public class SecurityConfig {
 
     private static final String[] WHITE_LIST_URL = {
-            "/auth/**"};
+            "/api/users/auth/**",
+            "/api/users/auth/login",
+            "/api/users/auth/signUp",      // ← Note the capital U if your endpoint uses it
+            "/api/users/auth/health",
+            "/api/users/swagger-ui/**",
+            "/api/users/swagger-ui.html",
+            "/api/users/v3/api-docs/**",
+            "/api/users/v3/api-docs",
+            "/api/users/api-docs/**",
+            "/api/users/actuator/health",
+            "/auth/**",                     // ← ADDED: Without context path
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/api-docs/**"
+    };
 
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

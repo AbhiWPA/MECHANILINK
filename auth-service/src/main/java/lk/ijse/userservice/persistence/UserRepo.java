@@ -20,9 +20,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepo extends JpaRepository<UserEntity, String> {
 
+//    Optional<UserEntity> findByEmail(String email);
+//
+////    Optional<UserEntity> findByEmailOrId(@Email(message = "Valid email is required") String email, @NotNull String id);
+//
+//    boolean existsByEmailOrId(@Email(message = "Valid email is required") String email, @NotNull String id);
+
     Optional<UserEntity> findByEmail(String email);
-
-//    Optional<UserEntity> findByEmailOrId(@Email(message = "Valid email is required") String email, @NotNull String id);
-
-    boolean existsByEmailOrId(@Email(message = "Valid email is required") String email, @NotNull String id);
+    Optional<UserEntity> findByUsername(String username);
+    Boolean existsByEmail(String email);
+    Boolean existsByUsername(String username);
 }

@@ -25,10 +25,10 @@ import java.util.List;
 @Builder
 @ToString(exclude = "user")
 public class MechanicEntity {
-    @Id
-    @Column(name = "id")
-    private String id;
 
+    @Id
+    @Column(name = "id", length = 50)
+    private String id;
 
     @OneToOne
     @JoinColumn(name = "id")
